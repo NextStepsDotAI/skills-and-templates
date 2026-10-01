@@ -1,0 +1,41 @@
+#!/bin/sh
+# Warns if the current branch is behind main or behind its remote tracking branch.
+# Runs after merge, pull, or checkout operations.
+# Enable with: git config core.hooksPath .githooks
+
+MAIN_BRANCH="main"
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Don't warn if we're on main
+if [ "$current_branch" = "$MAIN_BRANCH" ]; then
+    exit 0
+fi
+
+echo ""
+echo "📋 Branch sync check:"
+
+# Check 1: Is main ahead of current branch?
+if git merge-base --is-ancestor HEAD origin/$MAIN_BRANCH; then
+    main_ahead=$(git rev-list --count HEAD..origin/$MAIN_BRANCH)
+    if [ "$main_ahead" -gt 0 ]; then
+        echo "⚠️  Main has $main_ahead new commit(s) not in '$current_branch'"
+        echo "   Sync with: git merge origin/$MAIN_BRANCH"
+    fi
+else
+    echo "✓ '$current_branch' is up-to-date with $MAIN_BRANCH"
+fi
+
+# Check 2: Is remote tracking branch ahead of local?
+remote_tracking="origin/$current_branch"
+if git rev-parse --verify --quiet "$remote_tracking" >/dev/null 2>&1; then
+    if git merge-base --is-ancestor HEAD "$remote_tracking"; then
+        local_behind=$(git rev-list --count HEAD.."$remote_tracking")
+        if [ "$local_behind" -gt 0 ]; then
+            echo "⚠️  Remote has $local_behind new commit(s)"
+            echo "   Pull with: git pull origin $current_branch"
+        fi
+    fi
+fi
+
+echo ""
+exit 0

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Prevents pushing directly to main branch.
+# All changes to main must go through a pull request.
+# Enable with: git config core.hooksPath .githooks
+#
+# Can be bypassed with: git push --no-verify
+
+MAIN_BRANCH="main"
+
+while read local_ref local_oid remote_ref remote_oid
+do
+    # Extract branch name from remote_ref (e.g., "refs/heads/main" -> "main")
+    remote_branch=$(echo "$remote_ref" | sed 's/refs\/heads\///')
+
+    if [ "$remote_branch" = "$MAIN_BRANCH" ]; then
+        echo "❌ Blocked: You cannot push directly to $MAIN_BRANCH." >&2
+        echo "" >&2
+        echo "   All changes to $MAIN_BRANCH must go through a pull request:" >&2
+        echo "   1. Create a feature branch: git checkout -b feature/your-feature" >&2
+        echo "   2. Commit your changes" >&2
+        echo "   3. Push the feature branch: git push -u origin feature/your-feature" >&2
+        echo "   4. Open a PR on GitHub" >&2
+        echo "   5. Merge the PR to $MAIN_BRANCH" >&2
+        echo "" >&2
+        echo "   To bypass this hook (not recommended): git push --no-verify" >&2
+        exit 1
+    fi
+done
+
+exit 0

@@ -1,0 +1,100 @@
+## Git Workflow Enforcement
+
+This project enforces a PR-first workflow through git hooks and GitHub Actions workflows.
+
+### Why This Matters
+
+- Direct commits and pushes to `main` are blocked at two levels (local hooks + server)
+- All changes must go through pull requests for code review and CI validation
+- Prevents accidental breaking changes from reaching the main branch
+- Provides developer warnings about branch sync status
+
+### Mechanisms
+
+**Local Git Hooks** (`.githooks/`)
+- `pre-commit` — Blocks commits directly to main
+- `pre-push` — Blocks pushes directly to main
+- `pre-merge-commit` — Blocks specific branch merges (e.g., logs branch)
+- `post-merge` — Warns about branch sync issues
+
+**GitHub Actions Workflows** (`.github/workflows/`)
+- `enforce-pr-workflow.yml` — Detects and blocks direct commits on main
+- `block-logs-merge.yml` — Prevents unauthorized branch merges
+
+### Setup
+
+Enable hooks in your local repository:
+```bash
+git config core.hooksPath .githooks
+```
+
+### Workflow Process
+
+1. **Create a feature branch** from main
+   ```bash
+   git checkout -b feature/your-feature
+   ```
+
+2. **Make commits** (blocked if you try to commit to main)
+   ```bash
+   git add .
+   git commit -m "Your change"
+   ```
+
+3. **Push your branch** (blocked if you try to push to main)
+   ```bash
+   git push -u origin feature/your-feature
+   ```
+
+4. **Open a Pull Request** on GitHub
+   - Describe your changes
+   - Reference related issues
+   - Wait for CI validation
+
+5. **Merge the PR** on GitHub
+   - All workflows pass
+   - Changes are now in main
+   - Your local main is behind
+
+6. **Sync your local branches**
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout feature/your-feature
+   git merge origin/main  # or rebase
+   ```
+
+### Bypassing Hooks (Not Recommended)
+
+Each hook can be bypassed with `--no-verify`:
+- `git commit --no-verify` (skip pre-commit)
+- `git push --no-verify` (skip pre-push)
+
+Only do this if absolutely necessary and document why.
+
+### Branch Sync Warnings
+
+After `git pull`, `git merge`, or `git checkout`, you may see warnings:
+- ⚠️ "Main has X new commit(s)" — Sync with `git merge origin/main`
+- ⚠️ "Remote has X new commit(s)" — Pull with `git pull origin branch-name`
+
+These are informational; act on them to stay current.
+
+### Best Practices
+
+- Keep `main` as your single source of truth
+- Never force-push to main
+- Pull before pushing to avoid conflicts
+- Review PR diffs carefully
+- Use meaningful commit messages
+- Delete branches after merging
+
+### Architecture
+
+This setup follows Git Flow and GitHub Flow patterns:
+- Single `main` branch (production-ready)
+- Feature branches for development
+- Pull requests for all changes
+- Workflows for automated validation
+
+For more details, see the [Git Workflow Setup Skill README](git-workflow-setup/README.md).

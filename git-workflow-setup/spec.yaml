@@ -1,0 +1,33 @@
+name: git-workflow-setup
+version: 1.0.0
+description: |
+  Complete git workflow enforcement system with local hooks and GitHub Actions.
+
+  Prevents direct commits/pushes to main, enforces PR workflow, and provides
+  developer warnings for branch sync status.
+
+components:
+  hooks:
+    - pre-commit: Blocks commits directly to main
+    - pre-push: Blocks pushes directly to main
+    - pre-merge-commit: Blocks merging logs branch into other branches
+    - post-merge: Warns about branch sync status
+
+  workflows:
+    - enforce-pr-workflow: Detects and blocks direct commits reaching main
+    - block-logs-merge: Prevents logs branch from merging into other branches
+
+installation:
+  - Copy hooks to .githooks/
+  - Copy workflows to .github/workflows/
+  - Run: git config core.hooksPath .githooks
+  - Update CLAUDE.md with workflow documentation
+
+target-directories:
+  hooks: .githooks/
+  workflows: .github/workflows/
+  docs: CLAUDE.md
+
+documentation:
+  - README.md (this skill)
+  - CLAUDE.md template (to add to your project)

@@ -1,0 +1,32 @@
+#!/bin/sh
+# Blocks merging feature/claude-logs (or anything carrying its log files) into
+# any other branch. Merging other branches into feature/claude-logs is allowed.
+# Enable once per clone with: git config core.hooksPath .githooks
+# Git runs this hook only for merges that create a merge commit; the GitHub
+# "Block logs merge" check is the guard that also covers fast-forwards.
+
+LOGS_BRANCH="feature/claude-logs"
+
+current=$(git rev-parse --abbrev-ref HEAD)
+[ "$current" = "$LOGS_BRANCH" ] && exit 0
+
+logs_tip=$(git rev-parse --verify --quiet "$LOGS_BRANCH^{commit}")
+
+# git merge exports GIT_REFLOG_ACTION as "merge <commit>..." while this hook runs.
+for arg in $GIT_REFLOG_ACTION; do
+    commit=$(git rev-parse --verify --quiet "$arg^{commit}") || continue
+
+    if [ -n "$logs_tip" ] && git merge-base --is-ancestor "$logs_tip" "$commit" \
+        && ! git merge-base --is-ancestor "$logs_tip" HEAD; then
+        echo "Blocked: $LOGS_BRANCH must not be merged into $current." >&2
+        echo "Logs stay on their own branch for internal learning." >&2
+        exit 1
+    fi
+
+    if [ -n "$(git diff --name-only "HEAD...$commit" -- logs/ ':!logs/README.md')" ]; then
+        echo "Blocked: '$arg' carries log files that belong only on $LOGS_BRANCH." >&2
+        exit 1
+    fi
+done
+
+exit 0

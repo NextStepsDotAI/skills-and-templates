@@ -1,0 +1,40 @@
+# Keeps Claude activity logs out of code branches.
+# feature/claude-logs may receive merges from other branches, but must never
+# be merged into another branch, and no PR may carry log files elsewhere.
+name: Block logs merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+env:
+  LOGS_BRANCH: feature/claude-logs
+
+jobs:
+  block-logs-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip PRs into the logs branch
+        if: github.base_ref == env.LOGS_BRANCH
+        run: echo "Merging into $LOGS_BRANCH is allowed."
+
+      - name: Reject the logs branch as a PR source
+        if: github.base_ref != env.LOGS_BRANCH && github.head_ref == env.LOGS_BRANCH
+        run: |
+          echo "::error::$LOGS_BRANCH must not be merged into ${{ github.base_ref }}. Logs stay on their own branch."
+          exit 1
+
+      - uses: actions/checkout@v4
+        if: github.base_ref != env.LOGS_BRANCH
+        with:
+          fetch-depth: 0
+
+      - name: Reject log files in the PR diff
+        if: github.base_ref != env.LOGS_BRANCH
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- logs/ ':!logs/README.md')
+          if [ -n "$changed" ]; then
+            echo "::error::This PR carries log files that belong only on $LOGS_BRANCH:"
+            echo "$changed"
+            exit 1
+          fi

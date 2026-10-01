@@ -1,0 +1,48 @@
+# Enforces PR workflow on the main branch.
+# Prevents direct commits/pushes to main that bypass pull requests.
+name: Enforce PR Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  enforce-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if commit is from a PR merge
+        run: |
+          # Get the commit message
+          commit_message=$(git log -1 --pretty=%B)
+
+          # PR merges have "Merge pull request" or "Squashed" in the message
+          if [[ "$commit_message" =~ "Merge pull request" ]] || \
+             [[ "$commit_message" =~ "Squashed" ]] || \
+             [[ "$commit_message" =~ "Merge branch" && "$commit_message" =~ "into main" ]]; then
+            echo "✓ Commit is from a PR merge (allowed)"
+            exit 0
+          fi
+
+          # Check if this is the initial commit
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            # Not the initial commit
+            echo "❌ Blocked: Direct commit to main branch"
+            echo ""
+            echo "All changes to main must go through a pull request:"
+            echo "  1. Create a feature branch: git checkout -b feature/your-feature"
+            echo "  2. Commit your changes"
+            echo "  3. Push the feature branch: git push -u origin feature/your-feature"
+            echo "  4. Open a PR on GitHub"
+            echo "  5. Merge the PR to main"
+            echo ""
+            echo "Commit message: $commit_message"
+            exit 1
+          else
+            echo "✓ Initial commit (allowed)"
+            exit 0
+          fi
